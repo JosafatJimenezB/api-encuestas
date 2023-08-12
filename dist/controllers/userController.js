@@ -14,17 +14,22 @@ const awsConfig_1 = require("../utils/awsConfig");
 const uuid = require('uuid');
 const saveSurvey = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        const { name, description, questions, responses } = req.body;
+        const { name, description, questions } = req.body;
         console.log(req.body);
-        if (!name || !description || !questions || !responses) {
+        if (!name || !description || !questions) {
             return res.status(400).json({ message: 'Required data missing' });
         }
         const survey = {
             id: uuid.v4(),
             name: name,
             description: description,
-            questions: questions,
-            responses: responses,
+            questions: questions.map((questionData) => ({
+                id: questionData.id,
+                question: questionData.question,
+                type: questionData.type,
+                options: questionData.options,
+            })),
+            responses: [], // You can initialize this array here
         };
         const params = {
             TableName: process.env.DYNAMODB_TABLE_NAME || '',

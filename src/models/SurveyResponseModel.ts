@@ -1,9 +1,4 @@
-interface ResponseModel{
-    id: number;
-    questionId: number;
-    answer: string;
-    }
-
+import ResponseModel from './ResponseModel';
 interface SurveyResponseModel {
     id: number;
     surveyId: number; // ID of the survey being responded to

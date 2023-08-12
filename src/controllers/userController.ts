@@ -3,15 +3,16 @@ import { DocumentClient } from 'aws-sdk/clients/dynamodb';
 import { dynamoDB } from '../utils/awsConfig';
 import SurveyResponseModel from '../models/SurveyResponseModel';
 import SurveyModel from '../models/SurveyModel';
+import QuestionModel from '../models/QuestionModel';
 const uuid = require('uuid')
 
 export const saveSurvey = async (req: Request, res: Response) => {
   try {
-    const { name, description, questions, responses } = req.body;
+    const { name, description, questions } = req.body;
 
     console.log(req.body);
 
-    if (!name || !description || !questions || !responses) {
+    if (!name || !description || !questions) {
       return res.status(400).json({ message: 'Required data missing' });
     }
 
@@ -19,8 +20,13 @@ export const saveSurvey = async (req: Request, res: Response) => {
       id: uuid.v4(),
       name: name,
       description: description,
-      questions: questions,
-      responses: responses,
+      questions: questions.map((questionData: QuestionModel) => ({
+        id: questionData.id,
+        question: questionData.question,
+        type: questionData.type, // Add the question type
+        options: questionData.options,
+      })),
+      responses: [], // You can initialize this array here
     };
 
     const params: DocumentClient.PutItemInput = {
@@ -36,6 +42,7 @@ export const saveSurvey = async (req: Request, res: Response) => {
     res.status(500).json({ message: 'Error processing the request' });
   }
 };
+
 export const allResponses = async (_req: Request, res: Response) => {
   try {
     const params: DocumentClient.ScanInput = {
