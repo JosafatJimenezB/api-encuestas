@@ -76,7 +76,7 @@ const submitResponse = (req, res) => __awaiter(void 0, void 0, void 0, function*
                 longitude: location.longitude,
             },
         };
-        //falta probar
+        //TODO: falta probar
         const params = {
             TableName: process.env.DYNAMODB_TABLE_NAME || '',
             Key: {

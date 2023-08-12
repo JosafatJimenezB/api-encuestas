@@ -79,6 +79,7 @@ export const submitResponse = async (req: Request, res: Response) => {
         longitude: location.longitude,
       },
     };
+    //TODO: falta probar
 
     const params: DocumentClient.UpdateItemInput = {
       TableName: process.env.DYNAMODB_TABLE_NAME || '',
