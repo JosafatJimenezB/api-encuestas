@@ -80,6 +80,21 @@ export const submitResponse = async (req: Request, res: Response) => {
       },
     };
 
+    const params: DocumentClient.UpdateItemInput = {
+      TableName: process.env.DYNAMODB_TABLE_NAME || '',
+      Key: {
+        id: surveyId,
+      },
+      UpdateExpression: 'SET responses = list_append(responses, :response)',
+      ExpressionAttributeValues: {
+        ':response': [surveyResponse],
+      },
+    };
+
+    await dynamoDB.update(params).promise();
+
+    
+
     res.status(200).json({ message: 'Survey response saved successfully' });
   } catch (error) {
     console.error('Error processing the request:', error);
@@ -104,5 +119,45 @@ export const deleteResponse = async (req: Request, res: Response) => {
   } catch (error) {
     console.error('Error al eliminar la respuesta:', error);
     res.status(500).json({ message: 'Error al eliminar la respuesta' });
+  }
+
+
+  
+};
+
+
+export const getSurveyById = async (req: Request, res: Response) => {
+  try {
+    const id = req.params.id;
+
+    console.log(id);
+
+    const params: DocumentClient.GetItemInput = {
+      TableName: process.env.DYNAMODB_TABLE_NAME || '',
+      Key: {
+        id: id
+      },
+    };
+
+    const data = await dynamoDB.get(params).promise();
+
+    if (!data.Item) {
+      return res.status(404).json({ message: 'Survey not found' });
+    }
+
+    const surveyData: SurveyModel = {
+      id: data.Item.id,
+      name: data.Item.name,
+      description: data.Item.description,
+      questions: data.Item.questions,
+      responses: data.Item.responses,
+    };
+
+
+
+    res.status(200).json(surveyData);
+  } catch (error) {
+    console.error('Error fetching survey data:', error);
+    res.status(500).json({ message: 'Error fetching survey data' });
   }
 };

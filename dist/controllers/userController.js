@@ -9,7 +9,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.deleteResponse = exports.submitResponse = exports.allResponses = exports.saveSurvey = void 0;
+exports.getSurveyById = exports.deleteResponse = exports.submitResponse = exports.allResponses = exports.saveSurvey = void 0;
 const awsConfig_1 = require("../utils/awsConfig");
 const uuid = require('uuid');
 const saveSurvey = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
@@ -76,6 +76,18 @@ const submitResponse = (req, res) => __awaiter(void 0, void 0, void 0, function*
                 longitude: location.longitude,
             },
         };
+        //falta probar
+        const params = {
+            TableName: process.env.DYNAMODB_TABLE_NAME || '',
+            Key: {
+                id: surveyId,
+            },
+            UpdateExpression: 'SET responses = list_append(responses, :response)',
+            ExpressionAttributeValues: {
+                ':response': [surveyResponse],
+            },
+        };
+        yield awsConfig_1.dynamoDB.update(params).promise();
         res.status(200).json({ message: 'Survey response saved successfully' });
     }
     catch (error) {
@@ -102,4 +114,33 @@ const deleteResponse = (req, res) => __awaiter(void 0, void 0, void 0, function*
     }
 });
 exports.deleteResponse = deleteResponse;
+const getSurveyById = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const id = req.params.id;
+        console.log(id);
+        const params = {
+            TableName: process.env.DYNAMODB_TABLE_NAME || '',
+            Key: {
+                id: id
+            },
+        };
+        const data = yield awsConfig_1.dynamoDB.get(params).promise();
+        if (!data.Item) {
+            return res.status(404).json({ message: 'Survey not found' });
+        }
+        const surveyData = {
+            id: data.Item.id,
+            name: data.Item.name,
+            description: data.Item.description,
+            questions: data.Item.questions,
+            responses: data.Item.responses,
+        };
+        res.status(200).json(surveyData);
+    }
+    catch (error) {
+        console.error('Error fetching survey data:', error);
+        res.status(500).json({ message: 'Error fetching survey data' });
+    }
+});
+exports.getSurveyById = getSurveyById;
 //# sourceMappingURL=userController.js.map
