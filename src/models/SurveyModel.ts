@@ -1,6 +1,5 @@
 import QuestionModel from './QuestionModel';
 import ResponseModel from './ResponseModel';
-import Response from 'express';
 
 interface SurveyModel {
   id: number;
