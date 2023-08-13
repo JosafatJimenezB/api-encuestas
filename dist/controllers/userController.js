@@ -23,6 +23,7 @@ const saveSurvey = (req, res) => __awaiter(void 0, void 0, void 0, function* () 
             id: uuid.v4(),
             name: name,
             description: description,
+            responded: false,
             questions: questions.map((questionData) => ({
                 id: questionData.id,
                 question: questionData.question,
@@ -87,6 +88,11 @@ const submitResponse = (req, res) => __awaiter(void 0, void 0, void 0, function*
         if (!surveyId || !responses || !location) {
             return res.status(400).json({ message: 'Required data missing' });
         }
+        const existingSurvey = yield (0, exports.getSurveyData)(surveyId);
+        if (!existingSurvey.responded) {
+            return res.status(403).json({ message: 'Survey already responded' });
+        }
+        existingSurvey.responded = true;
         const formattedResponses = responses.map((response) => ({
             question: response.question,
             response: response.response,
