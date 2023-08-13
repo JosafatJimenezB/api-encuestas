@@ -6,7 +6,6 @@ interface SurveyModel {
   name: string;
   description: string;
   questions: QuestionModel[];
-  responses: ResponseModel[];
 }
 
 export default SurveyModel;
