@@ -9,7 +9,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getSurveyById = exports.deleteResponse = exports.submitResponse = exports.allResponses = exports.saveSurvey = void 0;
+exports.getSurveyById = exports.deleteResponse = exports.submitResponse = exports.getSurveyData = exports.allResponses = exports.saveSurvey = void 0;
 const awsConfig_1 = require("../utils/awsConfig");
 const uuid = require('uuid');
 const saveSurvey = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
@@ -29,7 +29,6 @@ const saveSurvey = (req, res) => __awaiter(void 0, void 0, void 0, function* () 
                 type: questionData.type,
                 options: questionData.options,
             })),
-            responses: [], // You can initialize this array here
         };
         const params = {
             TableName: process.env.DYNAMODB_TABLE_NAME || '',
@@ -59,6 +58,27 @@ const allResponses = (_req, res) => __awaiter(void 0, void 0, void 0, function* 
     }
 });
 exports.allResponses = allResponses;
+const getSurveyData = (surveyId) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const params = {
+            TableName: process.env.DYNAMODB_TABLE_NAME || '',
+            Key: {
+                id: surveyId,
+            },
+        };
+        const data = yield awsConfig_1.dynamoDB.get(params).promise();
+        if (!data.Item) {
+            throw new Error('Survey not found');
+        }
+        const surveyData = data.Item;
+        return surveyData;
+    }
+    catch (error) {
+        console.error('Error getting survey data:', error);
+        throw error;
+    }
+});
+exports.getSurveyData = getSurveyData;
 //TODO: hacer pruebas
 const submitResponse = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
@@ -67,28 +87,39 @@ const submitResponse = (req, res) => __awaiter(void 0, void 0, void 0, function*
         if (!surveyId || !responses || !location) {
             return res.status(400).json({ message: 'Required data missing' });
         }
-        const surveyResponse = {
-            id: uuid.v4(),
-            surveyId: surveyId,
-            responses: responses,
-            location: {
-                latitude: location.latitude,
-                longitude: location.longitude,
-            },
+        const formattedResponses = responses.map((response) => ({
+            question: response.question,
+            response: response.response,
+        }));
+        const formattedLocation = {
+            latitude: location.latitude,
+            longitude: location.longitude,
         };
-        //TODO: falta probar
+        const surveyData = yield (0, exports.getSurveyData)(surveyId);
+        const surveyResponse = {
+            questions: surveyData.questions,
+            description: surveyData.description,
+            id: surveyId,
+            name: surveyData.name,
+            responses: formattedResponses,
+            location: formattedLocation,
+        };
         const params = {
             TableName: process.env.DYNAMODB_TABLE_NAME || '',
             Key: {
                 id: surveyId,
             },
-            UpdateExpression: 'SET responses = list_append(responses, :response)',
+            UpdateExpression: 'SET responses = :response, #loc = :location',
             ExpressionAttributeValues: {
-                ':response': [surveyResponse],
+                ':response': [surveyResponse.responses],
+                ':location': surveyResponse.location,
+            },
+            ExpressionAttributeNames: {
+                '#loc': 'location',
             },
         };
         yield awsConfig_1.dynamoDB.update(params).promise();
-        res.status(200).json({ message: 'Survey response saved successfully' });
+        res.status(200).json(surveyResponse);
     }
     catch (error) {
         console.error('Error processing the request:', error);
@@ -134,6 +165,7 @@ const getSurveyById = (req, res) => __awaiter(void 0, void 0, void 0, function* 
             description: data.Item.description,
             questions: data.Item.questions,
             responses: data.Item.responses,
+            location: data.Item.location
         };
         res.status(200).json(surveyData);
     }
