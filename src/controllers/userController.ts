@@ -20,6 +20,7 @@ export const saveSurvey = async (req: Request, res: Response) => {
       id: uuid.v4(),
       name: name,
       description: description,
+      responded: false,
       questions: questions.map((questionData: QuestionModel) => ({
         id: questionData.id,
         question: questionData.question,
@@ -94,6 +95,14 @@ export const submitResponse = async (req: Request, res: Response) => {
     if (!surveyId || !responses || !location) {
       return res.status(400).json({ message: 'Required data missing' });
     }
+
+    const existingSurvey = await getSurveyData(surveyId);
+
+    if(!existingSurvey.responded) {
+      return res.status(403).json({ message: 'Survey already responded' });
+    }
+
+    existingSurvey.responded = true;
 
     const formattedResponses = responses.map((response: { question: any; response: any; }) => ({
       question: response.question,
