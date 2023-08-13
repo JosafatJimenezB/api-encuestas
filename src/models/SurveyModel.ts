@@ -11,6 +11,8 @@ interface SurveyModel {
     latitude: number;
     longitude: number;
   }
+  createAt: string;
+  responseDate: string;
 }
 
 export default SurveyModel;

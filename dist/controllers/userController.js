@@ -29,6 +29,7 @@ const saveSurvey = (req, res) => __awaiter(void 0, void 0, void 0, function* () 
                 type: questionData.type,
                 options: questionData.options,
             })),
+            createdAt: new Date().toISOString()
         };
         const params = {
             TableName: process.env.DYNAMODB_TABLE_NAME || '',
@@ -79,7 +80,6 @@ const getSurveyData = (surveyId) => __awaiter(void 0, void 0, void 0, function* 
     }
 });
 exports.getSurveyData = getSurveyData;
-//TODO: hacer pruebas
 const submitResponse = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const { surveyId, responses, location } = req.body;
@@ -97,22 +97,25 @@ const submitResponse = (req, res) => __awaiter(void 0, void 0, void 0, function*
         };
         const surveyData = yield (0, exports.getSurveyData)(surveyId);
         const surveyResponse = {
-            questions: surveyData.questions,
-            description: surveyData.description,
             id: surveyId,
             name: surveyData.name,
+            description: surveyData.description,
+            questions: surveyData.questions,
             responses: formattedResponses,
             location: formattedLocation,
+            responseDate: new Date().toISOString(),
         };
+        console.log("submit ", surveyResponse);
         const params = {
             TableName: process.env.DYNAMODB_TABLE_NAME || '',
             Key: {
                 id: surveyId,
             },
-            UpdateExpression: 'SET responses = :response, #loc = :location',
+            UpdateExpression: 'SET responses = :response, #loc = :location, responseDate = :responseDate',
             ExpressionAttributeValues: {
-                ':response': [surveyResponse.responses],
-                ':location': surveyResponse.location,
+                ':response': formattedResponses,
+                ':location': formattedLocation,
+                ':responseDate': surveyResponse.responseDate,
             },
             ExpressionAttributeNames: {
                 '#loc': 'location',
@@ -156,6 +159,7 @@ const getSurveyById = (req, res) => __awaiter(void 0, void 0, void 0, function* 
             },
         };
         const data = yield awsConfig_1.dynamoDB.get(params).promise();
+        console.log('info', data);
         if (!data.Item) {
             return res.status(404).json({ message: 'Survey not found' });
         }
@@ -165,8 +169,11 @@ const getSurveyById = (req, res) => __awaiter(void 0, void 0, void 0, function* 
             description: data.Item.description,
             questions: data.Item.questions,
             responses: data.Item.responses,
-            location: data.Item.location
+            location: data.Item.location,
+            createAt: data.Item.createdAt,
+            responseDate: data.Item.responseDate
         };
+        console.log(surveyData);
         res.status(200).json(surveyData);
     }
     catch (error) {

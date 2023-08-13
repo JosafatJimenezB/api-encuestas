@@ -1,7 +1,6 @@
 import { Request, Response } from 'express';
 import { DocumentClient } from 'aws-sdk/clients/dynamodb';
 import { dynamoDB } from '../utils/awsConfig';
-import SurveyResponseModel from '../models/SurveyResponseModel';
 import CreateSurveyModel from '../models/CreateSurveyModel';
 import QuestionModel from '../models/QuestionModel';
 import SurveyModel from '../models/SurveyModel';
@@ -27,6 +26,7 @@ export const saveSurvey = async (req: Request, res: Response) => {
         type: questionData.type, // Add the question type
         options: questionData.options,
       })),
+     createdAt: new Date().toISOString() 
     };
 
     const params: DocumentClient.PutItemInput = {
@@ -84,7 +84,7 @@ export const getSurveyData = async (surveyId: string): Promise<CreateSurveyModel
 };
 
 
-//TODO: hacer pruebas
+
 export const submitResponse = async (req: Request, res: Response) => {
   try {
     const { surveyId, responses, location } = req.body;
@@ -108,29 +108,32 @@ export const submitResponse = async (req: Request, res: Response) => {
     const surveyData = await getSurveyData(surveyId);
 
     const surveyResponse = {
-      questions: surveyData.questions,
-      description: surveyData.description,
       id: surveyId,
       name: surveyData.name,
+      description: surveyData.description,
+      questions: surveyData.questions,
       responses: formattedResponses,
       location: formattedLocation,
+      responseDate: new Date().toISOString(),
     };
+
+    console.log("submit ", surveyResponse);
 
     const params: DocumentClient.UpdateItemInput = {
       TableName: process.env.DYNAMODB_TABLE_NAME || '',
       Key: {
         id: surveyId,
       },
-      UpdateExpression: 'SET responses = :response, #loc = :location',
+      UpdateExpression: 'SET responses = :response, #loc = :location, responseDate = :responseDate',
       ExpressionAttributeValues: {
-        ':response': [surveyResponse.responses],
-        ':location': surveyResponse.location,
+        ':response': formattedResponses,
+        ':location': formattedLocation,
+        ':responseDate': surveyResponse.responseDate,
       },
       ExpressionAttributeNames: {
         '#loc': 'location',
       },
     };
-
     await dynamoDB.update(params).promise();
 
     res.status(200).json(surveyResponse);
@@ -179,6 +182,8 @@ export const getSurveyById = async (req: Request, res: Response) => {
 
     const data = await dynamoDB.get(params).promise();
 
+    console.log('info', data);
+
     if (!data.Item) {
       return res.status(404).json({ message: 'Survey not found' });
     }
@@ -189,9 +194,12 @@ export const getSurveyById = async (req: Request, res: Response) => {
       description: data.Item.description,
       questions: data.Item.questions,
       responses: data.Item.responses,
-      location: data.Item.location
+      location: data.Item.location,
+      createAt: data.Item.createdAt,
+      responseDate: data.Item.responseDate
     };
- 
+    
+    console.log(surveyData);
 
 
     res.status(200).json(surveyData);
@@ -200,3 +208,5 @@ export const getSurveyById = async (req: Request, res: Response) => {
     res.status(500).json({ message: 'Error fetching survey data' });
   }
 };
+
+

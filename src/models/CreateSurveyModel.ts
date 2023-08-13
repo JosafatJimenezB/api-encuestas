@@ -5,6 +5,7 @@ interface CreateSurveyModel {
   name: string;
   description: string;
   questions: QuestionModel[];
+  createdAt: string;
 }
 
 export default CreateSurveyModel;
