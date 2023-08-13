@@ -6,6 +6,11 @@ interface SurveyModel {
   name: string;
   description: string;
   questions: QuestionModel[];
+  responses: ResponseModel[];
+  location: {
+    latitude: number;
+    longitude: number;
+  }
 }
 
 export default SurveyModel;
