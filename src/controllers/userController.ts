@@ -62,7 +62,7 @@ export const allResponses = async (_req: Request, res: Response) => {
   }
 };
 
-export const getSurveyData = async (surveyId: string): Promise<SurveyModel> => {
+export const getSurveyData = async (surveyId: string): Promise<SurveyResponseModel> => {
   try {
     const params: DocumentClient.GetItemInput = {
       TableName: process.env.DYNAMODB_TABLE_NAME || '',
@@ -77,8 +77,9 @@ export const getSurveyData = async (surveyId: string): Promise<SurveyModel> => {
       throw new Error('Survey not found');
     }
 
-    const surveyData: SurveyModel = data.Item as SurveyModel;
+    const surveyData: SurveyResponseModel = data.Item as SurveyResponseModel;
 
+    
     
 
     return surveyData;
@@ -89,6 +90,7 @@ export const getSurveyData = async (surveyId: string): Promise<SurveyModel> => {
 };
 
 
+
 export const submitResponse = async (req: Request, res: Response) => {
   try {
     const { surveyId, responses, location } = req.body;
@@ -97,41 +99,40 @@ export const submitResponse = async (req: Request, res: Response) => {
       return res.status(400).json({ message: 'Required data missing' });
     }
 
-    // Fetch the existing survey data
     const existingSurvey = await getSurveyData(surveyId);
 
-  
-    const formattedResponses: ResponseModel[] = responses.map((response: { question: any; response: any; }) => ({
-      id: uuid.v4(),
+    const newResponses: ResponseModel[] = responses.map((response: any) => ({
+      id: response.question.id,
       questionId: response.question.id,
       answer: response.response,
     }));
 
-    const formattedLocation = {
-      latitude: location.latitude,
-      longitude: location.longitude,
-    };
+    if (!existingSurvey.responses) {
+      existingSurvey.responses = [];
+    }
 
-    // Push the new survey responses into the existing responses array
-    existingSurvey.responses.push(...formattedResponses);
+    existingSurvey.responses.push({
+      id: surveyId,
+      responses: newResponses,
+      location: {
+        latitude: location.latitude,
+        longitude: location.longitude,
+      },
+      responseDate: new Date().toISOString()
+    });
 
-    existingSurvey.responded = true;
 
     const params: DocumentClient.UpdateItemInput = {
       TableName: process.env.DYNAMODB_TABLE_NAME || '',
       Key: {
         id: surveyId,
       },
-      UpdateExpression: 'SET responses = :response, #loc = :location, responded = :responded',
+      UpdateExpression: 'SET responses = :response',
       ExpressionAttributeValues: {
         ':response': existingSurvey.responses,
-        ':location': formattedLocation,
-        ':responded': existingSurvey.responded,
-      },
-      ExpressionAttributeNames: {
-        '#loc': 'location',
       },
     };
+    
 
     await dynamoDB.update(params).promise();
 
@@ -196,7 +197,7 @@ export const getSurveyById = async (req: Request, res: Response) => {
       questions: data.Item.questions,
       responses: data.Item.responses,
       location: data.Item.location,
-      createAt: data.Item.createdAt,
+      createdAt: data.Item.createdAt,
       responseDate: data.Item.responseDate
     };
     

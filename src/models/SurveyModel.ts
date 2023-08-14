@@ -1,6 +1,5 @@
 import QuestionModel from './QuestionModel';
 import ResponseModel from './ResponseModel';
-
 interface SurveyModel {
   id: number;
   name: string;
@@ -11,9 +10,10 @@ interface SurveyModel {
   location: {
     latitude: number;
     longitude: number;
-  }
-  createAt: string;
+  };
+  createdAt: string;
   responseDate: string;
 }
+
 
 export default SurveyModel;

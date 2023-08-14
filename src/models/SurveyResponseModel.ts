@@ -1,8 +1,12 @@
 import ResponseModel from './ResponseModel';
 
 interface SurveyResponseModel {
-  id: number;
-  questionId: number;
-  answer: string;
+  responses: ResponseModel[];
+  location: {
+    latitude: number;
+    longitude: number;
+  };
+  responseDate: string;
 }
+
 export default SurveyResponseModel;

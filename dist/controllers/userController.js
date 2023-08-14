@@ -87,33 +87,32 @@ const submitResponse = (req, res) => __awaiter(void 0, void 0, void 0, function*
         if (!surveyId || !responses || !location) {
             return res.status(400).json({ message: 'Required data missing' });
         }
-        // Fetch the existing survey data
         const existingSurvey = yield (0, exports.getSurveyData)(surveyId);
-        const formattedResponses = responses.map((response) => ({
-            id: uuid.v4(),
+        const newResponses = responses.map((response) => ({
+            id: response.question.id,
             questionId: response.question.id,
             answer: response.response,
         }));
-        const formattedLocation = {
-            latitude: location.latitude,
-            longitude: location.longitude,
-        };
-        // Push the new survey responses into the existing responses array
-        existingSurvey.responses.push(...formattedResponses);
-        existingSurvey.responded = true;
+        if (!existingSurvey.responses) {
+            existingSurvey.responses = [];
+        }
+        existingSurvey.responses.push({
+            id: surveyId,
+            responses: newResponses,
+            location: {
+                latitude: location.latitude,
+                longitude: location.longitude,
+            },
+            responseDate: new Date().toISOString()
+        });
         const params = {
             TableName: process.env.DYNAMODB_TABLE_NAME || '',
             Key: {
                 id: surveyId,
             },
-            UpdateExpression: 'SET responses = :response, #loc = :location, responded = :responded',
+            UpdateExpression: 'SET responses = :response',
             ExpressionAttributeValues: {
                 ':response': existingSurvey.responses,
-                ':location': formattedLocation,
-                ':responded': existingSurvey.responded,
-            },
-            ExpressionAttributeNames: {
-                '#loc': 'location',
             },
         };
         yield awsConfig_1.dynamoDB.update(params).promise();
@@ -166,7 +165,7 @@ const getSurveyById = (req, res) => __awaiter(void 0, void 0, void 0, function* 
             questions: data.Item.questions,
             responses: data.Item.responses,
             location: data.Item.location,
-            createAt: data.Item.createdAt,
+            createdAt: data.Item.createdAt,
             responseDate: data.Item.responseDate
         };
         console.log(surveyData);
