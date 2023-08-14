@@ -126,7 +126,6 @@ export const submitResponse = async (req: Request, res: Response) => {
 
 
     existingSurvey.responses.push(...newResponses); // Push new responses into the existing responses array
-    existingSurvey.responded = true;
 
     const params: DocumentClient.UpdateItemInput = {
       TableName: process.env.DYNAMODB_TABLE_NAME || '',
