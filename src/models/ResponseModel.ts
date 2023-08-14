@@ -1,7 +1,7 @@
 
 interface ResponseModel {
     id: string;
-    responses: ResponseModel[]; // Add the responses property as an optional array of ResponseModel
+    response: ResponseModel[]; // Add the responses property as an optional array of ResponseModel
     location: {
       latitude: number;
       longitude: number;

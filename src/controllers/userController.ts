@@ -113,7 +113,7 @@ export const submitResponse = async (req: Request, res: Response) => {
 
     existingSurvey.responses.push({
       id: surveyId,
-      responses: newResponses,
+      response: newResponses,
       location: {
         latitude: location.latitude,
         longitude: location.longitude,

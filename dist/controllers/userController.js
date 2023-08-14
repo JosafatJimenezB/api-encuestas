@@ -98,7 +98,7 @@ const submitResponse = (req, res) => __awaiter(void 0, void 0, void 0, function*
         }
         existingSurvey.responses.push({
             id: surveyId,
-            responses: newResponses,
+            response: newResponses,
             location: {
                 latitude: location.latitude,
                 longitude: location.longitude,
