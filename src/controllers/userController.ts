@@ -122,6 +122,7 @@ export const submitResponse = async (req: Request, res: Response) => {
     });
 
 
+
     const params: DocumentClient.UpdateItemInput = {
       TableName: process.env.DYNAMODB_TABLE_NAME || '',
       Key: {
