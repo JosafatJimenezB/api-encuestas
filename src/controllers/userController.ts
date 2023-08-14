@@ -1,11 +1,11 @@
-
-
 import { Request, Response } from 'express';
 import { DocumentClient } from 'aws-sdk/clients/dynamodb';
 import { dynamoDB } from '../utils/awsConfig';
 import CreateSurveyModel from '../models/CreateSurveyModel';
 import QuestionModel from '../models/QuestionModel';
 import SurveyModel from '../models/SurveyModel';
+import ResponseModel from '../models/ResponseModel';
+import  SurveyResponseModel  from '../models/SurveyResponseModel';
 const uuid = require('uuid')
 
 export const saveSurvey = async (req: Request, res: Response) => {
@@ -26,7 +26,7 @@ export const saveSurvey = async (req: Request, res: Response) => {
       questions: questions.map((questionData: QuestionModel) => ({
         id: questionData.id,
         question: questionData.question,
-        type: questionData.type, // Add the question type
+        type: questionData.type, 
         options: questionData.options,
       })),
      createdAt: new Date().toISOString() 
@@ -97,13 +97,14 @@ export const submitResponse = async (req: Request, res: Response) => {
       return res.status(400).json({ message: 'Required data missing' });
     }
 
+    // Fetch the existing survey data
     const existingSurvey = await getSurveyData(surveyId);
 
-
-
-    const formattedResponses = responses.map((response: { question: any; response: any; }) => ({
-      question: response.question,
-      response: response.response,
+  
+    const formattedResponses: ResponseModel[] = responses.map((response: { question: any; response: any; }) => ({
+      id: uuid.v4(),
+      questionId: response.question.id,
+      answer: response.response,
     }));
 
     const formattedLocation = {
@@ -111,21 +112,9 @@ export const submitResponse = async (req: Request, res: Response) => {
       longitude: location.longitude,
     };
 
-    const newResponses = formattedResponses.map((formattedResponse: { question: any; response: any; }) => ({
-      id: uuid.v4(), // Generate a unique ID for the response
-      questionId: formattedResponse.question.id, // Use the question ID to match the ResponseModel
-      answer: formattedResponse.response, // Use "answer" to match the ResponseModel structure
-    }));
+    // Push the new survey responses into the existing responses array
+    existingSurvey.responses.push(...formattedResponses);
 
-    const newResponseData = {
-      id: surveyId,
-      responses: newResponses,
-      location: formattedLocation,
-      responseDate: new Date().toISOString(), // Store the response date
-    };
-
-
-    existingSurvey.responses.push(...newResponses); // Push new responses into the existing responses array
     existingSurvey.responded = true;
 
     const params: DocumentClient.UpdateItemInput = {
@@ -133,12 +122,11 @@ export const submitResponse = async (req: Request, res: Response) => {
       Key: {
         id: surveyId,
       },
-      UpdateExpression: 'SET responses = :response, #loc = :location, responded = :responded, responseDate = :responseDate', // Include responseDate
+      UpdateExpression: 'SET responses = :response, #loc = :location, responded = :responded',
       ExpressionAttributeValues: {
         ':response': existingSurvey.responses,
         ':location': formattedLocation,
         ':responded': existingSurvey.responded,
-        ':responseDate': newResponseData.responseDate,
       },
       ExpressionAttributeNames: {
         '#loc': 'location',

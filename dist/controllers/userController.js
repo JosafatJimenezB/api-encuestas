@@ -87,39 +87,30 @@ const submitResponse = (req, res) => __awaiter(void 0, void 0, void 0, function*
         if (!surveyId || !responses || !location) {
             return res.status(400).json({ message: 'Required data missing' });
         }
+        // Fetch the existing survey data
         const existingSurvey = yield (0, exports.getSurveyData)(surveyId);
         const formattedResponses = responses.map((response) => ({
-            question: response.question,
-            response: response.response,
+            id: uuid.v4(),
+            questionId: response.question.id,
+            answer: response.response,
         }));
         const formattedLocation = {
             latitude: location.latitude,
             longitude: location.longitude,
         };
-        const newResponses = formattedResponses.map((formattedResponse) => ({
-            id: uuid.v4(),
-            questionId: formattedResponse.question.id,
-            answer: formattedResponse.response, // Use "answer" to match the ResponseModel structure
-        }));
-        const newResponseData = {
-            id: surveyId,
-            responses: newResponses,
-            location: formattedLocation,
-            responseDate: new Date().toISOString(), // Store the response date
-        };
-        existingSurvey.responses.push(...newResponses); // Push new responses into the existing responses array
+        // Push the new survey responses into the existing responses array
+        existingSurvey.responses.push(...formattedResponses);
         existingSurvey.responded = true;
         const params = {
             TableName: process.env.DYNAMODB_TABLE_NAME || '',
             Key: {
                 id: surveyId,
             },
-            UpdateExpression: 'SET responses = :response, #loc = :location, responded = :responded, responseDate = :responseDate',
+            UpdateExpression: 'SET responses = :response, #loc = :location, responded = :responded',
             ExpressionAttributeValues: {
                 ':response': existingSurvey.responses,
                 ':location': formattedLocation,
                 ':responded': existingSurvey.responded,
-                ':responseDate': newResponseData.responseDate,
             },
             ExpressionAttributeNames: {
                 '#loc': 'location',
