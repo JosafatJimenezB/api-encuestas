@@ -1,3 +1,5 @@
+
+
 import { Request, Response } from 'express';
 import { DocumentClient } from 'aws-sdk/clients/dynamodb';
 import { dynamoDB } from '../utils/awsConfig';
@@ -60,7 +62,7 @@ export const allResponses = async (_req: Request, res: Response) => {
   }
 };
 
-export const getSurveyData = async (surveyId: string): Promise<CreateSurveyModel> => {
+export const getSurveyData = async (surveyId: string): Promise<SurveyModel> => {
   try {
     const params: DocumentClient.GetItemInput = {
       TableName: process.env.DYNAMODB_TABLE_NAME || '',
@@ -75,7 +77,9 @@ export const getSurveyData = async (surveyId: string): Promise<CreateSurveyModel
       throw new Error('Survey not found');
     }
 
-    const surveyData: CreateSurveyModel = data.Item as CreateSurveyModel;
+    const surveyData: SurveyModel = data.Item as SurveyModel;
+
+    
 
     return surveyData;
   } catch (error) {
@@ -85,12 +89,9 @@ export const getSurveyData = async (surveyId: string): Promise<CreateSurveyModel
 };
 
 
-
 export const submitResponse = async (req: Request, res: Response) => {
   try {
     const { surveyId, responses, location } = req.body;
-
-    console.log(req.body);
 
     if (!surveyId || !responses || !location) {
       return res.status(400).json({ message: 'Required data missing' });
@@ -98,11 +99,7 @@ export const submitResponse = async (req: Request, res: Response) => {
 
     const existingSurvey = await getSurveyData(surveyId);
 
-    if(!existingSurvey.responded) {
-      return res.status(403).json({ message: 'Survey already responded' });
-    }
 
-    existingSurvey.responded = true;
 
     const formattedResponses = responses.map((response: { question: any; response: any; }) => ({
       question: response.question,
@@ -114,43 +111,49 @@ export const submitResponse = async (req: Request, res: Response) => {
       longitude: location.longitude,
     };
 
-    const surveyData = await getSurveyData(surveyId);
+    const newResponses = formattedResponses.map((formattedResponse: { question: any; response: any; }) => ({
+      id: uuid.v4(), // Generate a unique ID for the response
+      questionId: formattedResponse.question.id, // Use the question ID to match the ResponseModel
+      answer: formattedResponse.response, // Use "answer" to match the ResponseModel structure
+    }));
 
-    const surveyResponse = {
+    const newResponseData = {
       id: surveyId,
-      name: surveyData.name,
-      description: surveyData.description,
-      questions: surveyData.questions,
-      responses: formattedResponses,
+      responses: newResponses,
       location: formattedLocation,
-      responseDate: new Date().toISOString(),
+      responseDate: new Date().toISOString(), // Store the response date
     };
 
-    console.log("submit ", surveyResponse);
+
+    existingSurvey.responses.push(...newResponses); // Push new responses into the existing responses array
+    existingSurvey.responded = true;
 
     const params: DocumentClient.UpdateItemInput = {
       TableName: process.env.DYNAMODB_TABLE_NAME || '',
       Key: {
         id: surveyId,
       },
-      UpdateExpression: 'SET responses = :response, #loc = :location, responseDate = :responseDate',
+      UpdateExpression: 'SET responses = :response, #loc = :location, responded = :responded, responseDate = :responseDate', // Include responseDate
       ExpressionAttributeValues: {
-        ':response': formattedResponses,
+        ':response': existingSurvey.responses,
         ':location': formattedLocation,
-        ':responseDate': surveyResponse.responseDate,
+        ':responded': existingSurvey.responded,
+        ':responseDate': newResponseData.responseDate,
       },
       ExpressionAttributeNames: {
         '#loc': 'location',
       },
     };
+
     await dynamoDB.update(params).promise();
 
-    res.status(200).json(surveyResponse);
+    res.status(200).json({ message: 'Survey response saved successfully' });
   } catch (error) {
     console.error('Error processing the request:', error);
     res.status(500).json({ message: 'Error processing the request' });
   }
 };
+
 
 export const deleteResponse = async (req: Request, res: Response) => {
   try {
@@ -201,6 +204,7 @@ export const getSurveyById = async (req: Request, res: Response) => {
       id: data.Item.id,
       name: data.Item.name,
       description: data.Item.description,
+      responded: data.Item.responded,
       questions: data.Item.questions,
       responses: data.Item.responses,
       location: data.Item.location,

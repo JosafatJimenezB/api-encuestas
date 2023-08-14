@@ -5,6 +5,7 @@ interface SurveyModel {
   id: number;
   name: string;
   description: string;
+  responded: boolean;
   questions: QuestionModel[];
   responses: ResponseModel[];
   location: {

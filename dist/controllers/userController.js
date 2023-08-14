@@ -84,15 +84,10 @@ exports.getSurveyData = getSurveyData;
 const submitResponse = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const { surveyId, responses, location } = req.body;
-        console.log(req.body);
         if (!surveyId || !responses || !location) {
             return res.status(400).json({ message: 'Required data missing' });
         }
         const existingSurvey = yield (0, exports.getSurveyData)(surveyId);
-        if (!existingSurvey.responded) {
-            return res.status(403).json({ message: 'Survey already responded' });
-        }
-        existingSurvey.responded = true;
         const formattedResponses = responses.map((response) => ({
             question: response.question,
             response: response.response,
@@ -101,34 +96,37 @@ const submitResponse = (req, res) => __awaiter(void 0, void 0, void 0, function*
             latitude: location.latitude,
             longitude: location.longitude,
         };
-        const surveyData = yield (0, exports.getSurveyData)(surveyId);
-        const surveyResponse = {
+        const newResponses = formattedResponses.map((formattedResponse) => ({
+            id: uuid.v4(),
+            questionId: formattedResponse.question.id,
+            answer: formattedResponse.response, // Use "answer" to match the ResponseModel structure
+        }));
+        const newResponseData = {
             id: surveyId,
-            name: surveyData.name,
-            description: surveyData.description,
-            questions: surveyData.questions,
-            responses: formattedResponses,
+            responses: newResponses,
             location: formattedLocation,
-            responseDate: new Date().toISOString(),
+            responseDate: new Date().toISOString(), // Store the response date
         };
-        console.log("submit ", surveyResponse);
+        existingSurvey.responses.push(...newResponses); // Push new responses into the existing responses array
+        existingSurvey.responded = true;
         const params = {
             TableName: process.env.DYNAMODB_TABLE_NAME || '',
             Key: {
                 id: surveyId,
             },
-            UpdateExpression: 'SET responses = :response, #loc = :location, responseDate = :responseDate',
+            UpdateExpression: 'SET responses = :response, #loc = :location, responded = :responded, responseDate = :responseDate',
             ExpressionAttributeValues: {
-                ':response': formattedResponses,
+                ':response': existingSurvey.responses,
                 ':location': formattedLocation,
-                ':responseDate': surveyResponse.responseDate,
+                ':responded': existingSurvey.responded,
+                ':responseDate': newResponseData.responseDate,
             },
             ExpressionAttributeNames: {
                 '#loc': 'location',
             },
         };
         yield awsConfig_1.dynamoDB.update(params).promise();
-        res.status(200).json(surveyResponse);
+        res.status(200).json({ message: 'Survey response saved successfully' });
     }
     catch (error) {
         console.error('Error processing the request:', error);
@@ -173,6 +171,7 @@ const getSurveyById = (req, res) => __awaiter(void 0, void 0, void 0, function* 
             id: data.Item.id,
             name: data.Item.name,
             description: data.Item.description,
+            responded: data.Item.responded,
             questions: data.Item.questions,
             responses: data.Item.responses,
             location: data.Item.location,
